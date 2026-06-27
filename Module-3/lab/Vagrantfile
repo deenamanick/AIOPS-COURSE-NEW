@@ -1,0 +1,287 @@
+VAGRANTFILE_API_VERSION = "2"
+
+BOX_NAME = "generic/ubuntu2204"
+
+# Network layout
+NETWORK_BASE = '192.168.56'
+START_OCTET = 24
+
+HOSTS = {
+  'master.kubedev.com'  => "#{NETWORK_BASE}.#{START_OCTET}",
+  'worker1.kubedev.com' => "#{NETWORK_BASE}.#{START_OCTET + 1}",
+  'worker2.kubedev.com' => "#{NETWORK_BASE}.#{START_OCTET + 2}"
+}
+
+$hosts_setup = <<-SCRIPT
+set -e
+echo "Configuring /etc/hosts..."
+grep -qxF '#{NETWORK_BASE}.#{START_OCTET} master.kubedev.com master' /etc/hosts || echo '#{NETWORK_BASE}.#{START_OCTET} master.kubedev.com master' >> /etc/hosts
+grep -qxF '#{NETWORK_BASE}.#{START_OCTET + 1} worker1.kubedev.com worker1' /etc/hosts || echo '#{NETWORK_BASE}.#{START_OCTET + 1} worker1.kubedev.com worker1' >> /etc/hosts
+grep -qxF '#{NETWORK_BASE}.#{START_OCTET + 2} worker2.kubedev.com worker2' /etc/hosts || echo '#{NETWORK_BASE}.#{START_OCTET + 2} worker2.kubedev.com worker2' >> /etc/hosts
+echo "/etc/hosts configured successfully"
+SCRIPT
+
+$setup = <<'SCRIPT'
+set -eux
+
+NODE_IP=$1
+
+echo "=========================================="
+echo "Setting up Kubernetes node with IP: ${NODE_IP}"
+echo "=========================================="
+
+# Disable swap
+swapoff -a
+sed -i '/swap/d' /etc/fstab
+systemctl disable --now systemd-zram-setup@zram0.service 2>/dev/null || true
+
+# Base tools
+apt-get update -y
+apt-get install -y apt-transport-https ca-certificates curl wget gnupg lsb-release net-tools iproute2 bash-completion conntrack socat ipset ipvsadm
+
+# Containerd
+VERSION="1.7.24"
+wget -q https://github.com/containerd/containerd/releases/download/v${VERSION}/containerd-${VERSION}-linux-amd64.tar.gz
+tar Cxzvf /usr/local containerd-${VERSION}-linux-amd64.tar.gz
+mkdir -p /usr/local/lib/systemd/system
+wget -q -P /usr/local/lib/systemd/system https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+systemctl daemon-reload && systemctl enable --now containerd
+
+# Runc
+RUNC="v1.2.2"
+wget -q https://github.com/opencontainers/runc/releases/download/${RUNC}/runc.amd64
+install -m 755 runc.amd64 /usr/local/sbin/runc
+
+# CNI plugins
+CNI="v1.6.0"
+mkdir -p /opt/cni/bin
+wget -q https://github.com/containernetworking/plugins/releases/download/${CNI}/cni-plugins-linux-amd64-${CNI}.tgz
+tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-${CNI}.tgz
+
+# Containerd config with SystemdCgroup and correct sandbox image
+mkdir -p /etc/containerd
+containerd config default > /etc/containerd/config.toml
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+sed -i 's|sandbox_image = "registry.k8s.io/pause:.*"|sandbox_image = "registry.k8s.io/pause:3.9"|' /etc/containerd/config.toml
+systemctl restart containerd
+
+# Kernel modules
+cat <<EOF | tee /etc/modules-load.d/k8s.conf
+overlay
+br_netfilter
+EOF
+modprobe overlay
+modprobe br_netfilter
+
+# Sysctl settings for Kubernetes networking
+cat <<EOF | tee /etc/sysctl.d/k8s.conf
+net.bridge.bridge-nf-call-iptables  = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+net.ipv4.ip_forward                 = 1
+net.ipv4.conf.all.forwarding        = 1
+EOF
+sysctl --system
+
+# Kubernetes packages
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | gpg --dearmor -o /etc/apt/trusted.gpg.d/k8s.gpg
+echo "deb [signed-by=/etc/apt/trusted.gpg.d/k8s.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /" > /etc/apt/sources.list.d/kubernetes.list
+apt-get update
+apt-get install -y kubelet kubeadm kubectl
+apt-mark hold kubelet kubeadm kubectl
+
+mkdir -p /etc/default
+echo "KUBELET_EXTRA_ARGS=--node-ip=${NODE_IP}" > /etc/default/kubelet
+
+systemctl enable kubelet
+kubeadm config images pull
+
+echo "Base setup completed for ${NODE_IP}"
+SCRIPT
+
+$master_post = <<'SCRIPT'
+set -eux
+NODE_IP=$1
+
+if [ ! -f /etc/kubernetes/admin.conf ]; then
+  echo "=========================================="
+  echo "Initializing Kubernetes Master"
+  echo "=========================================="
+
+  # Initialize cluster with Flannel CIDR
+  kubeadm init \
+    --apiserver-advertise-address=${NODE_IP} \
+    --pod-network-cidr=10.244.0.0/16 \
+    --cri-socket unix:///run/containerd/containerd.sock \
+    --control-plane-endpoint=${NODE_IP}:6443
+
+  # Setup kubeconfig for root
+  mkdir -p /root/.kube
+  cp /etc/kubernetes/admin.conf /root/.kube/config
+  chown root:root /root/.kube/config
+
+  # Setup kubeconfig for vagrant user
+  mkdir -p /home/vagrant/.kube
+  cp /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+  chown vagrant:vagrant /home/vagrant/.kube/config
+
+  echo "=========================================="
+  echo "Installing Flannel CNI"
+  echo "=========================================="
+
+  # Download Flannel manifest
+  curl -sL https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml -o /tmp/kube-flannel.yml
+
+  # Patch Flannel to use eth1 (VirtualBox private network interface)
+  sed -i '/- --kube-subnet-mgr/a\        - --iface=eth1' /tmp/kube-flannel.yml
+
+  kubectl apply -f /tmp/kube-flannel.yml
+
+  echo "=========================================="
+  echo "Waiting for Control Plane Components"
+  echo "=========================================="
+
+  # Give Kubernetes time to schedule pods
+  echo "Waiting for pods to be scheduled..."
+  sleep 30
+
+  # Wait for CoreDNS pods to exist first, then wait for ready
+  echo "Waiting for CoreDNS pods to be created..."
+  COREDNS_READY=false
+  for i in $(seq 1 60); do
+    if kubectl get pods -n kube-system -l k8s-app=kube-dns 2>/dev/null | grep -q "coredns"; then
+      echo "CoreDNS pods found, waiting for ready state..."
+      if kubectl wait --for=condition=ready pod -l k8s-app=kube-dns -n kube-system --timeout=300s 2>/dev/null; then
+        COREDNS_READY=true
+        echo "CoreDNS is ready!"
+        break
+      fi
+    fi
+    echo "Waiting for CoreDNS... attempt $i/60"
+    sleep 5
+  done
+
+  if [ "$COREDNS_READY" = false ]; then
+    echo "WARNING: CoreDNS did not become ready in time, but continuing..."
+  fi
+
+  # Wait for Flannel pods to exist first, then wait for ready
+  echo "Waiting for Flannel pods to be created..."
+  FLANNEL_READY=false
+  for i in $(seq 1 60); do
+    if kubectl get pods -n kube-flannel -l app=flannel 2>/dev/null | grep -q "flannel"; then
+      echo "Flannel pods found, waiting for ready state..."
+      if kubectl wait --for=condition=ready pod -l app=flannel -n kube-flannel --timeout=300s 2>/dev/null; then
+        FLANNEL_READY=true
+        echo "Flannel is ready!"
+        break
+      fi
+    fi
+    echo "Waiting for Flannel... attempt $i/60"
+    sleep 5
+  done
+
+  if [ "$FLANNEL_READY" = false ]; then
+    echo "WARNING: Flannel did not become ready in time, but continuing..."
+  fi
+
+  # Show system pods status
+  echo "=========================================="
+  echo "System pods status:"
+  echo "=========================================="
+  kubectl get pods -A
+
+  # Generate join command for workers
+  echo "Generating join command for workers..."
+  kubeadm token create --print-join-command > /vagrant/join.sh
+  chmod +x /vagrant/join.sh
+
+  echo "=========================================="
+  echo "Master initialization complete!"
+  echo "Join command saved to /vagrant/join.sh"
+  echo "=========================================="
+fi
+SCRIPT
+
+$worker_join = <<'SCRIPT'
+set -eux
+
+echo "=========================================="
+echo "Joining worker to cluster"
+echo "=========================================="
+
+echo "Waiting for join.sh from master..."
+JOIN_FOUND=false
+for i in $(seq 1 120); do
+  if [ -f /vagrant/join.sh ]; then
+    JOIN_FOUND=true
+    echo "Found join.sh!"
+    break
+  fi
+  echo "Waiting for join.sh... attempt $i/120"
+  sleep 5
+done
+
+if [ "$JOIN_FOUND" = true ]; then
+  echo "Joining cluster..."
+  # Add small delay to ensure master is fully ready
+  sleep 10
+  bash /vagrant/join.sh --cri-socket unix:///run/containerd/containerd.sock
+  echo "=========================================="
+  echo "Successfully joined the cluster!"
+  echo "=========================================="
+else
+  echo "=========================================="
+  echo "ERROR: join.sh not found after 10 minutes!"
+  echo "=========================================="
+  exit 1
+fi
+SCRIPT
+
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = BOX_NAME
+  config.vm.synced_folder ".", "/vagrant"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = 2
+  end
+
+  # ================== MASTER NODE ==================
+  config.vm.define "master", primary: true do |m|
+    m.vm.hostname = "master"
+    m.vm.network :private_network, ip: "#{NETWORK_BASE}.#{START_OCTET}"
+    m.vm.provider "virtualbox" do |v|
+      v.memory = 5120
+      v.name = "k8s-master"
+    end
+    m.vm.provision "shell", inline: $hosts_setup
+    m.vm.provision "shell", inline: $setup, args: ["#{NETWORK_BASE}.#{START_OCTET}"]
+    m.vm.provision "shell", inline: $master_post, args: ["#{NETWORK_BASE}.#{START_OCTET}"]
+  end
+
+  # ================== WORKER 1 ==================
+  config.vm.define "worker1" do |w|
+    w.vm.hostname = "worker1"
+    w.vm.network :private_network, ip: "#{NETWORK_BASE}.#{START_OCTET + 1}"
+    w.vm.provider "virtualbox" do |v|
+      v.memory = 3072
+      v.name = "k8s-worker1"
+    end
+    w.vm.provision "shell", inline: $hosts_setup
+    w.vm.provision "shell", inline: $setup, args: ["#{NETWORK_BASE}.#{START_OCTET + 1}"]
+    w.vm.provision "shell", inline: $worker_join
+  end
+
+  # ================== WORKER 2 ==================
+  config.vm.define "worker2" do |w|
+    w.vm.hostname = "worker2"
+    w.vm.network :private_network, ip: "#{NETWORK_BASE}.#{START_OCTET + 2}"
+    w.vm.provider "virtualbox" do |v|
+      v.memory = 3072
+      v.name = "k8s-worker2"
+    end
+    w.vm.provision "shell", inline: $hosts_setup
+    w.vm.provision "shell", inline: $setup, args: ["#{NETWORK_BASE}.#{START_OCTET + 2}"]
+    w.vm.provision "shell", inline: $worker_join
+  end
+end

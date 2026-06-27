@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiops-assistant-deployment
+  labels:
+    app: aiops-assistant
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aiops-assistant
+  template:
+    metadata:
+      labels:
+        app: aiops-assistant
+    spec:
+      containers:
+      - name: assistant
+        image: aiops-assistant:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8501
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aiops-assistant-secret
+              key: openai-api-key
+        resources:
+          requests:
+            memory: "400Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        # Readiness and Liveness probes to monitor Streamlit's health
+        readinessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /_stcore/health
+            port: 8501
+          initialDelaySeconds: 30
+          periodSeconds: 20
