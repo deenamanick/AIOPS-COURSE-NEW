@@ -16,20 +16,26 @@ In this module, you will be writing Python scripts in the `lab/` folder. We have
 
 ### How to Set Up the Lab
 
-Before starting Lesson 01, you must configure your Python environment.
+Since we built a lab environment in Module 1, you will run this lab inside your `aiops-control` Virtual Machine.
 
-1. **Navigate to the lab directory:**
+1. **SSH into your VM:**
    ```bash
-   cd lab
+   vagrant ssh aiops-control
    ```
 
-2. **(Optional but recommended) Create a Virtual Environment:**
+2. **Navigate to the Module 2 lab directory:**
+   (Assuming you have copied or cloned this repository into `/opt/AIOPS-COURSE-NEW`)
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   cd /opt/AIOPS-COURSE-NEW/Module-2/lab
    ```
 
-3. **Install Dependencies:**
+3. **Create a Virtual Environment (to keep the VM clean):**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+4. **Install Dependencies:**
    ```bash
    pip install -r requirements.txt
    ```
