@@ -86,9 +86,9 @@ Notice `temperature=0.2`. In IT Operations, we want **facts**, not creativity. A
 
 To tie it all together, look at `app.py`. We have already built the Streamlit interface that combines the ChromaDB vector search with this `llm_engine.py`.
 
-Run the application:
+Run the application (binding to 0.0.0.0 so it's accessible from your host machine):
 ```bash
-streamlit run app.py
+streamlit run app.py --server.address 0.0.0.0
 ```
 
-Open `http://localhost:8501` in your browser. Enter your OpenAI API key if you didn't use a `.env` file, and test out an incident!
+Open `http://localhost:8501` in your host browser. Enter your OpenAI API key if you didn't use a `.env` file, and test out an incident!

@@ -40,13 +40,19 @@ Since we built a lab environment in Module 1, you will run this lab inside your 
    pip install -r requirements.txt
    ```
 
-4. **Set your OpenAI API Key:**
+5. **Set your OpenAI API Key:**
    Create a file named `.env` in the `lab/` folder and add:
    ```text
    OPENAI_API_KEY=sk-your-openai-api-key-here
    ```
 
-Once your environment is set up, you are ready to begin!
+6. **Start the Application:**
+   Because you are inside a VM, you must tell Streamlit to listen on all interfaces so your host browser can reach it.
+   ```bash
+   streamlit run app.py --server.address 0.0.0.0
+   ```
+
+Once your environment is set up and running, you can access the UI at **http://localhost:8501** on your host machine and begin the lessons!
 
 ## Files in this Module
 - `01-deep-dive-embeddings.md`: The theory behind Vector Embeddings.
