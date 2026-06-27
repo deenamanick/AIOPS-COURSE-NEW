@@ -14,6 +14,34 @@ In this module, you will be writing Python scripts in the `lab/` folder. We have
 
 > **Note:** You do not need to be a Python expert. We will provide the exact scripts for you to copy, paste, and run. 
 
+### How to Set Up the Lab
+
+Before starting Lesson 01, you must configure your Python environment.
+
+1. **Navigate to the lab directory:**
+   ```bash
+   cd lab
+   ```
+
+2. **(Optional but recommended) Create a Virtual Environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Set your OpenAI API Key:**
+   Create a file named `.env` in the `lab/` folder and add:
+   ```text
+   OPENAI_API_KEY=sk-your-openai-api-key-here
+   ```
+
+Once your environment is set up, you are ready to begin!
+
 ## Files in this Module
 - `01-deep-dive-embeddings.md`: The theory behind Vector Embeddings.
 - `02-openai-llm-rca.md`: The primary lab where you build the LLM integration.
