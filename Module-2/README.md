@@ -1,63 +1,78 @@
 # Module 2: Advanced AIOps — Vector Search & LLM Root Cause Analysis
 
-Welcome to Module 2! In this module, we transition from simple keyword matching to **Semantic Vector Search** and **Automated Generative AI Analysis**. 
+Welcome to Module 2! In Module 1, you built a local lab, deployed a RAG demo, and previewed ChromaDB. Now we go deeper — you will containerize an upgraded AI assistant, replace keyword matching with semantic vector search, and integrate the **OpenAI API** to automatically generate Root Cause Analysis reports.
 
 ## Learning Objectives
+
 By the end of this module, you will be able to:
-1. Understand the difference between Lexical (keyword) and Semantic (vector) search.
-2. Initialize and query a **ChromaDB** vector database.
-3. Integrate the **OpenAI API** into an IT workflow.
-4. Generate automated Root Cause Analysis (RCA) reports by combining historical context with generative AI (RAG).
+1. Explain the difference between Lexical (keyword) and Semantic (vector) search with concrete examples.
+2. Write a Dockerfile and docker-compose for an AI/ML application.
+3. Initialize and query a **ChromaDB** vector database with real incident data.
+4. Integrate the **OpenAI API** into an IT operations workflow.
+5. Generate automated Root Cause Analysis (RCA) reports using RAG (Retrieval-Augmented Generation).
+6. Estimate API costs and understand production trade-offs.
 
-## Lab Environment
-In this module, you will be writing Python scripts in the `lab/` folder. We have prepared an empty canvas for you to build the AIOps pipeline step-by-step.
+## Prerequisites
 
-> **Note:** You do not need to be a Python expert. We will provide the exact scripts for you to copy, paste, and run. 
+- ✅ Module 1 completed (your `aiops-control` VM should be running)
+- ✅ Docker and Docker Compose installed on `aiops-control` (done in Module 1)
+- ✅ An OpenAI API key ([platform.openai.com](https://platform.openai.com))
 
-### How to Set Up the Lab
+> **Note:** You do not need to be a Python expert. All scripts are provided as copy-paste blocks. The focus is on understanding the AIOps concepts, not writing code from scratch.
 
-Since we built a lab environment in Module 1, you will run this lab inside your `aiops-control` Virtual Machine.
+---
 
-1. **SSH into your VM:**
-   ```bash
-   vagrant ssh aiops-control
-   ```
+## How to Set Up the Lab
 
-2. **Navigate to the Module 2 lab directory:**
-   (Assuming you have copied or cloned this repository into `/opt/AIOPS-COURSE-NEW`)
-   ```bash
-   cd /opt/AIOPS-COURSE-NEW/Module-2/lab
-   ```
+You will run this lab inside your `aiops-control` Virtual Machine from Module 1.
 
-3. **Create a Virtual Environment (to keep the VM clean):**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   ```
+### Step 1: SSH into your VM
+```bash
+vagrant ssh aiops-control
+```
 
-4. **Install Dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Step 2: Copy Module 2 lab files to the VM
+```bash
+# From your host machine (not inside the VM)
+cd Module-2
+vagrant ssh-config aiops-control > /tmp/ssh-config-control
+scp -r -F /tmp/ssh-config-control lab/* aiops-control:/opt/module2-lab/
+```
 
-5. **Set your OpenAI API Key:**
-   Create a file named `.env` in the `lab/` folder and add:
-   ```text
-   OPENAI_API_KEY=sk-your-openai-api-key-here
-   ```
+### Step 3: Build and run the Docker container
+```bash
+vagrant ssh aiops-control
+cd /opt/module2-lab
 
-6. **Start the Application:**
-   Because you are inside a VM, you must tell Streamlit to listen on all interfaces so your host browser can reach it.
-   ```bash
-   streamlit run app.py --server.address 0.0.0.0
-   ```
+# Generate the incident data first
+python3 generate_incidents.py
 
-Once your environment is set up and running, you can access the UI at **http://localhost:8501** on your host machine and begin the lessons!
+# Build and start the containerized assistant
+docker compose up -d --build
+```
 
-## Files in this Module
-- `01-deep-dive-embeddings.md`: The theory behind Vector Embeddings.
-- `02-openai-llm-rca.md`: The primary lab where you build the LLM integration.
-- `03-break-fix.md`: The Break/Fix activity to test your new pipeline.
-- `04-bonus-lecture.md`: Advanced topic on mitigating AI Hallucinations in Ops.
+### Step 4: Set your OpenAI API Key
+Create a `.env` file in `/opt/module2-lab/`:
+```bash
+echo "OPENAI_API_KEY=sk-your-key-here" > .env
+docker compose restart
+```
+
+### Step 5: Access the UI
+Open **http://localhost:8501** in your host browser.
+
+---
+
+## Lessons in this Module
+
+| # | Lesson | What You'll Do |
+|---|---|---|
+| 01 | [Deep Dive: Embeddings](./01-deep-dive-embeddings.md) | Understand how text becomes vectors and why it matters |
+| 02 | [Dockerize the Assistant](./02-dockerize-assistant.md) | Write a Dockerfile and docker-compose for the upgraded app |
+| 03 | [ChromaDB Vector Search](./03-chromadb-vector-search.md) | Replace Jaccard with semantic search and compare results |
+| 04 | [OpenAI LLM RCA](./04-openai-llm-rca.md) | Connect vector search to OpenAI for automated diagnosis |
+| 05 | [Break/Fix Exercises](./05-break-fix.md) | 5 hands-on infrastructure troubleshooting exercises |
+| 06 | [Cost & Performance](./06-cost-and-performance.md) | Token counting, latency benchmarks, production awareness |
+| 07 | [Bonus Lecture](./07-bonus-lecture.md) | AI Hallucinations + 4 student deliverables |
 
 Let's get started with **01-deep-dive-embeddings.md**!
