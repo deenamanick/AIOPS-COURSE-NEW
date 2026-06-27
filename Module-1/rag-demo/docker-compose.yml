@@ -1,0 +1,40 @@
+# AIOps Module 1 — RAG Demo Stack
+# Runs on aiops-control VM (192.168.56.10)
+# Access Streamlit UI from host: http://localhost:8501
+
+services:
+  rag-app:
+    build: .
+    container_name: aiops-rag-app
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./incidents.csv:/app/incidents.csv:ro
+    environment:
+      - RAG_ENGINE=jaccard
+      - CHROMA_HOST=chromadb
+    depends_on:
+      chromadb:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - rag-net
+
+  # Bonus: ChromaDB vector database for semantic search
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: aiops-chromadb
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma-data:/chroma/chroma
+    restart: unless-stopped
+    networks:
+      - rag-net
+
+volumes:
+  chroma-data:
+
+networks:
+  rag-net:
+    driver: bridge

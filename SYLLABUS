@@ -1,0 +1,423 @@
+# AIOps Course — Complete Syllabus Breakdown (13 Modules)
+
+---
+
+## Module 1: AIOps Fundamentals & RAG Demo
+
+### Learning Objectives
+- ✓ Understand what AIOps means in IT operations
+- ✓ Explain how AIOps supports SRE and DevOps teams
+- ✓ Differentiate monitoring vs observability vs AIOps
+- ✓ Build a local VirtualBox-based AIOps lab
+- ✓ Deploy a sample app and Linux monitoring agents
+
+### Core Topics
+- AIOps lifecycle: collect → observe → detect → correlate → predict → automate → remediate
+- Role of SRE in modern operations
+- Incident management basics
+- Metrics, logs, traces, events
+- Alert fatigue, slow RCA, repeated incidents, capacity issues
+
+### VirtualBox Lab
+Create 3 Ubuntu VMs (aiops-control, app-server, db-server). Configure networking, SSH, Nginx, a Flask app, and Node Exporter. Draw the architecture diagram.
+
+### RAG Demo Lab
+Build a basic RAG system using Jaccard similarity. Load CSV incident data. Run a Streamlit-based incident assistant that answers "What caused the last outage?"
+
+### Break / Fix Activity
+Stop Nginx, verify outage, troubleshoot with `top`, `htop`, `free`, `df`, `journalctl`, `systemctl`.
+
+---
+
+## Module 2: Advanced AIOps — Vector Search & LLM RCA
+
+### Learning Objectives
+- ✓ Containerize an AI/ML application using Docker
+- ✓ Upgrade from keyword matching to semantic vector search
+- ✓ Integrate an LLM for automated Root Cause Analysis
+- ✓ Understand embeddings, similarity search, and vector databases
+
+### Core Topics
+- Why keyword search fails for incident matching
+- Sentence-Transformers: converting text to vectors
+- ChromaDB: storing and querying embeddings locally
+- LLM integration: sending context + query → receiving structured RCA
+- Prompt engineering for operations (system prompts for incident analysis)
+- Cost awareness: tokens, rate limits, caching
+
+### Docker Lab
+Write a Dockerfile for the AIOps assistant. Build and run the container. Verify the Streamlit app works inside Docker at `localhost:8501`.
+
+### Vector Search Lab
+Replace Jaccard similarity with ChromaDB. Ingest 50+ incident records as embeddings. Query: "database connection pool exhausted" and compare results vs keyword search.
+
+### LLM RCA Lab
+Connect to OpenAI/Anthropic API. Feed top 3 vector-matched incidents + current alert → LLM generates Root Cause Analysis with suggested fix.
+
+### Break / Fix Activity
+Inject a new incident log that has never been seen before. Observe how vector search finds semantically similar past incidents even without exact keyword match. Compare LLM RCA quality with and without context.
+
+---
+
+## Module 3: Deployment — Docker & Kubernetes
+
+### Learning Objectives
+- ✓ Deploy containerized AI/ML workloads to Kubernetes
+- ✓ Configure Kubernetes Deployments, Services, and Ingress
+- ✓ Manage secrets (API keys) securely in K8s
+- ✓ Set resource requests and limits for AI workloads
+
+### Core Topics
+- Docker → Kubernetes progression: why K8s for production
+- Pods, Deployments, ReplicaSets — core K8s objects
+- Services: ClusterIP, NodePort, LoadBalancer
+- Ingress controllers for external traffic routing
+- Secrets and ConfigMaps for configuration management
+- Resource requests vs limits (CPU/memory for ML workloads)
+
+### Kubernetes Lab
+Deploy the AIOps assistant to a local K8s cluster (Minikube/Kind). Create Deployment YAML with 2 replicas. Expose via NodePort Service. Store the OpenAI API key in a K8s Secret.
+
+### Resource Management Lab
+Set CPU request to `250m` and memory limit to `512Mi`. Observe pod scheduling. Trigger OOM (Out of Memory) by processing a large dataset and watch K8s restart the pod.
+
+### Break / Fix Activity
+Delete a running pod — observe K8s self-healing (auto-restart). Scale replicas to 0 and back to 3. Simulate a bad container image (wrong tag) and debug with `kubectl describe pod` and `kubectl logs`.
+
+---
+
+## Module 4: Production Ops — CI/CD, Testing & Scaling
+
+### Learning Objectives
+- ✓ Build a CI/CD pipeline for AI/ML applications using GitHub Actions
+- ✓ Write automated tests for ML and LLM-adjacent components
+- ✓ Set up basic monitoring for production workloads
+- ✓ Configure autoscaling for AI workloads
+
+### Core Topics
+- CI/CD fundamentals: build → test → deploy pipeline
+- Testing AI/ML: unit tests, integration tests, golden dataset tests
+- Monitoring basics: health checks, resource visibility
+- Horizontal Pod Autoscaler (HPA) for K8s
+- Deployment strategies: rolling update, blue-green, canary
+- DORA metrics introduction (Deployment Frequency, Lead Time, CFR, MTTR)
+
+### CI/CD Lab
+Create a GitHub Actions workflow: on push → lint → run unit tests → build Docker image → push to registry. Add a manual approval gate for production deployment.
+
+### Testing Lab
+Write 5 automated tests: 2 unit tests (text chunking, embedding generation), 2 integration tests (API endpoint, DB query), 1 ML accuracy test (golden dataset of 10 known incidents).
+
+### Autoscaling Lab
+Configure HPA: scale pods from 2 → 5 when CPU exceeds 70%. Generate synthetic load using `hey` or `wrk`. Watch pods scale up and down.
+
+### Break / Fix Activity
+Push a broken test to the pipeline — observe CI failure and blocked deployment. Fix the test, push again, verify green pipeline. Simulate traffic spike and watch autoscaler respond.
+
+---
+
+## Module 5: Anomaly Detection with Machine Learning
+
+### Learning Objectives
+- ✓ Explain why static thresholds fail in dynamic environments
+- ✓ Train an Isolation Forest model on multi-dimensional telemetry
+- ✓ Visualize anomalies in compute and network data
+- ✓ Compare Isolation Forest with Z-score and moving average approaches
+
+### Core Topics
+- Static thresholds vs dynamic anomaly detection
+- Unsupervised learning for operations: no labeled data needed
+- Isolation Forest: how it isolates outliers by random splits
+- Z-score: standard deviation-based anomaly detection
+- Moving average: smoothing noise, detecting trends
+- Multi-dimensional telemetry: CPU + memory + network + disk together
+- Contamination parameter: tuning false positive rate
+
+### Isolation Forest Lab
+Load a CSV with CPU, memory, network, and disk metrics. Train scikit-learn `IsolationForest` with contamination=0.05. Predict anomalies. Plot results with Matplotlib — normal points in blue, anomalies in red.
+
+### Z-Score & Moving Average Lab
+Implement Z-score anomaly detection: flag any data point > 3 standard deviations. Implement moving average with a 10-point window: flag points outside the rolling band. Compare results with Isolation Forest.
+
+### Break / Fix Activity
+Inject synthetic anomalies into the dataset (CPU spike to 99%, memory leak pattern, disk fill). Run all 3 detection methods. Compare: which method catches each anomaly type best?
+
+---
+
+## Module 6: Observability — Metrics, Logs & Traces
+
+### Learning Objectives
+- ✓ Set up Prometheus to scrape and store infrastructure metrics
+- ✓ Build Grafana dashboards for real-time system visibility
+- ✓ Aggregate logs using Loki and Promtail
+- ✓ Explain the 3 Pillars of Observability and when to use each
+- ✓ Apply RED, USE, and Golden Signals methods
+
+### Core Topics
+- Monitoring vs Observability: what's the difference?
+- 3 Pillars of Observability: Metrics (Prometheus), Logs (Loki), Traces (Jaeger/OpenTelemetry)
+- Prometheus: pull-based metrics collection, PromQL query language
+- Grafana: dashboard design, panel types, variables
+- Loki: log aggregation, LogQL queries
+- Promtail: log shipping agent
+- RED method: Rate, Error, Duration (for services)
+- USE method: Utilization, Saturation, Errors (for infrastructure)
+- Golden Signals: Latency, Traffic, Errors, Saturation (Google SRE)
+- OpenTelemetry: vendor-neutral instrumentation standard
+
+### Prometheus Lab
+Install Prometheus. Configure `prometheus.yml` to scrape Node Exporter (system metrics) and Flask app (app metrics). Write 3 PromQL queries: CPU usage, memory usage, HTTP request rate.
+
+### Grafana Dashboard Lab
+Connect Grafana to Prometheus. Build a dashboard with 4 panels: CPU gauge, memory time-series, HTTP request rate, error rate. Add a variable for selecting the target server.
+
+### Loki Log Aggregation Lab
+Install Loki + Promtail. Configure Promtail to tail Nginx access logs and Flask app logs. Query logs in Grafana: filter by severity, search for error patterns, correlate log spikes with metric spikes.
+
+### Break / Fix Activity
+Stop Node Exporter on one VM — observe gap in Prometheus metrics. Generate 500 errors from the Flask app — watch the error rate spike in Grafana and the error logs flood Loki. Practice correlating: "I see a metric spike → let me check the logs → I found the root cause."
+
+---
+
+## Module 7: Alerting, SRE & Error Budgets
+
+### Learning Objectives
+- ✓ Configure Alertmanager to send notifications on threshold breaches
+- ✓ Define SLIs, SLOs, and SLAs for a real service
+- ✓ Calculate and manage error budgets
+- ✓ Reduce alert fatigue using grouping, inhibition, and severity tuning
+- ✓ Differentiate symptom-based vs cause-based alerting
+
+### Core Topics
+- Alertmanager: routing, grouping, inhibition, silencing
+- SLI (Service Level Indicator): what you measure (e.g., latency P99)
+- SLO (Service Level Objective): internal target (e.g., 99.9% requests < 200ms)
+- SLA (Service Level Agreement): contractual commitment with penalties
+- Error budget: how much unreliability you can tolerate (100% - SLO = budget)
+- Error budget policy: when budget is exhausted → freeze features, focus on reliability
+- Symptom-based alerting: alert on user impact, not internal cause
+- Static vs dynamic thresholds: when each applies
+- On-call engineering: rotations, escalation policies, runbooks
+
+### Alertmanager Lab
+Install Alertmanager. Create 3 alert rules in Prometheus: `HighCPU` (CPU > 80% for 5 min), `HighErrorRate` (5xx > 5% for 2 min), `DiskAlmostFull` (disk > 85%). Configure email/Slack notification receiver. Test by triggering each alert.
+
+### SLI/SLO/SLA Lab
+Define SLIs for the Flask app: availability (% of successful responses), latency (P99 response time). Set SLO: 99.5% availability over a 30-day rolling window. Calculate: "We have a 0.5% error budget = 216 minutes of downtime allowed per month."
+
+### Alert Fatigue Lab
+Simulate an alert storm: take down the database → 15 alerts fire simultaneously from app server, web server, and monitoring. Configure Alertmanager grouping (group by `cluster`) and inhibition (if DB is down, suppress app alerts). Reduce 15 alerts to 1 actionable alert.
+
+### Break / Fix Activity
+Consume the entire error budget by injecting sustained errors. Observe: "Budget exhausted → no more feature deployments allowed." Fix the errors, watch the budget recover over the rolling window.
+
+---
+
+## Module 8: Log Analytics & Event Correlation
+
+### Learning Objectives
+- ✓ Parse and enrich structured and unstructured logs
+- ✓ Correlate alerts with logs using time-window analysis
+- ✓ Build a dependency graph to map root cause vs symptoms
+- ✓ Understand event-driven architecture for real-time telemetry
+
+### Core Topics
+- Structured logging (JSON) vs unstructured logging (plain text)
+- Log parsing: extracting fields, timestamps, severity levels
+- Log enrichment: adding context (hostname, service name, trace ID)
+- Correlation patterns: time-window, topology-based, dependency-based
+- Root cause vs symptom: "the database is the root cause, the 500 errors are the symptom"
+- Event-driven architecture: pub/sub, Kafka basics, event streaming
+- Common failure cascades: DB timeout → connection pool exhaustion → 5xx → user impact
+
+### Log Parsing Lab
+Take raw Nginx access logs. Write a Python parser to extract: timestamp, IP, HTTP method, path, status code, response time. Output as structured JSON. Calculate: top 10 slowest endpoints, error rate per endpoint.
+
+### Correlation Engine Lab
+Build a Python correlation engine. Given: 3 alerts fired within a 2-minute window (DB latency spike, app 5xx spike, user complaints). Use time-window correlation to group them into 1 incident. Use a dependency map (User → App → DB) to identify: "DB is the root cause."
+
+```
+Input:  [Alert: DB_LATENCY @ 14:01], [Alert: APP_5XX @ 14:02], [Alert: USER_COMPLAINTS @ 14:03]
+Output: Incident #42 — Root Cause: DB_LATENCY, Symptoms: APP_5XX, USER_COMPLAINTS
+```
+
+### Event-Driven Architecture Lab
+Set up a simple pub/sub system (Python `queue` or Redis Pub/Sub). Publisher: emits alert events. Subscriber 1: logs to file. Subscriber 2: checks correlation rules. Subscriber 3: sends notification. Understand: "Events decouple producers from consumers."
+
+### Break / Fix Activity
+Inject a cascading failure: fill the database disk → queries slow down → app connection pool exhausts → 5xx errors spike → users see errors. Use your correlation engine to trace the chain back to "disk full on db-server" as the root cause.
+
+---
+
+## Module 9: Predictive Maintenance & Capacity Planning
+
+### Learning Objectives
+- ✓ Forecast CPU, memory, and disk usage using time-series models
+- ✓ Calculate when infrastructure will hit capacity limits
+- ✓ Build an infrastructure risk score engine
+- ✓ Track and interpret DORA metrics for team performance
+
+### Core Topics
+- Predictive vs reactive operations: catching failures before they happen
+- Time-series forecasting: moving averages, linear regression, ARIMA basics
+- Capacity planning: "At current growth rate, disk fills in 14 days"
+- Infrastructure risk scoring: weighted composite of CPU, memory, disk, error rate
+- DORA metrics: Deployment Frequency, Lead Time for Changes, Change Failure Rate, MTTR
+- DORA benchmarks: Elite, High, Medium, Low performance tiers
+- SLO breach prediction: "At current trajectory, we breach SLO in 3 hours"
+
+### Time-Series Forecasting Lab
+Load 30 days of disk usage data (CSV). Fit a linear regression model. Predict: "Disk will reach 100% on [date]." Plot actual vs predicted with matplotlib. Repeat for CPU and memory.
+
+### Risk Scoring Lab
+Build a risk scoring engine in Python. Inputs: CPU (0–100), memory (0–100), disk (0–100), error rate (0–100). Weights: CPU=0.2, Memory=0.2, Disk=0.3, Errors=0.3. Output: composite risk score (0–100) with severity: Green (< 40), Yellow (40–70), Red (> 70).
+
+### DORA Metrics Lab
+Collect data from your GitHub Actions pipeline (Module 4). Calculate: How often did we deploy? What was the average time from commit to production? What % of deployments caused failures? How fast did we recover? Plot the DORA dashboard.
+
+### Break / Fix Activity
+Inject a disk fill pattern (1GB/hour growth). Run the forecasting model. Verify it predicts "disk full in 8 hours." Set an alert at the predicted time minus 2 hours. Confirm the alert fires before the actual failure.
+
+---
+
+## Module 10: Auto-Remediation & Self-Healing
+
+### Learning Objectives
+- ✓ Write Ansible playbooks for common remediation tasks
+- ✓ Trigger automated remediation from alerting systems
+- ✓ Practice chaos engineering to test system resilience
+- ✓ Implement feature flag rollback on anomaly detection
+- ✓ Understand GitOps principles for infrastructure management
+
+### Core Topics
+- Self-healing pattern: Detect → Validate → Act → Verify → Rollback → Log
+- Ansible basics: playbooks, tasks, handlers, inventory
+- Webhook-triggered automation: Alertmanager → webhook → Ansible
+- Chaos engineering: Netflix Chaos Monkey principles, game days, blast radius
+- Feature flags: toggle features on/off without deployment
+- Auto-rollback: anomaly detected → disable feature flag → system recovers
+- GitOps: Git as single source of truth for infrastructure (ArgoCD/Flux)
+- Human-in-the-loop: when NOT to auto-remediate (data deletion, scaling down, security)
+
+### Ansible Playbook Lab
+Write 3 Ansible playbooks:
+1. **restart-service.yml**: Restart Nginx when it crashes
+2. **clear-logs.yml**: Delete logs older than 7 days when disk > 85%
+3. **scale-up.yml**: Add a new app server container when load is high
+
+Run each playbook manually. Verify the fix worked.
+
+### Webhook-Triggered Healing Lab
+Configure Alertmanager to send a webhook to a Python Flask endpoint when `DiskAlmostFull` fires. The Flask endpoint receives the alert, runs the `clear-logs.yml` Ansible playbook, and logs the result. End-to-end: disk fills → alert fires → webhook triggers → Ansible cleans logs → alert resolves.
+
+### Chaos Engineering Lab
+Practice 3 chaos experiments:
+1. **Kill a process**: Stop the Flask app mid-request. Does the load balancer route to the healthy replica?
+2. **Network partition**: Block traffic between app-server and db-server using `iptables`. How does the app behave?
+3. **Resource starvation**: Use `stress-ng` to consume 95% CPU. Do alerts fire? Does auto-scaling kick in?
+
+### Break / Fix Activity
+Run all 3 chaos experiments in sequence. For each one: measure Time to Detect (TTD) and Time to Recover (TTR). Goal: TTD < 2 minutes, TTR < 5 minutes with auto-remediation.
+
+---
+
+## Module 11: Local LLMs for AIOps & Capstone
+
+### Learning Objectives
+- ✓ Install and run a local LLM using Ollama (no cloud API needed)
+- ✓ Generate incident reports and RCA using local AI
+- ✓ Write a blameless post-mortem following industry templates
+- ✓ Understand the AIOps maturity model (Reactive → Autonomous)
+- ✓ Complete a capstone: full incident lifecycle from failure to recovery
+
+### Core Topics
+- Local LLMs: Ollama, Llama 3, Mistral — running AI without cloud APIs
+- LLM risks in operations: hallucination, unsafe remediation suggestions
+- AIOps maturity model: Level 1 (Reactive) → Level 2 (Proactive) → Level 3 (Predictive) → Level 4 (Autonomous)
+- Blameless post-mortem culture: how Google, Netflix, and Spotify learn from failures
+- Post-mortem template: timeline, root cause, impact, action items
+- Capstone design: end-to-end incident lifecycle
+
+### Ollama Setup Lab
+Install Ollama on the control VM. Pull a lightweight model (`llama3.2:3b` or `mistral:7b`). Test with: "Explain why a database connection pool might get exhausted." Compare response quality: local model vs cloud API (Module 2).
+
+### LLM Incident Report Lab
+Feed the LLM: 5 correlated alerts + 20 log lines + anomaly detection results. Prompt: "Generate a Root Cause Analysis report." Output: structured report with timeline, root cause, affected services, recommended fix, prevention steps.
+
+### Post-Mortem Writing Lab
+Write a blameless post-mortem for a simulated outage using an industry-standard template. Focus on systemic failures over human error.
+
+### Capstone: Full Incident Lifecycle
+Execute the complete AIOps chain end-to-end:
+1. **Inject failure**: Fill disk on db-server using `dd`
+2. **Detection**: Anomaly detection (Module 5) catches the trend
+3. **Alerting**: Prometheus alert fires, Alertmanager notifies (Module 7)
+4. **Correlation**: Correlate DB alerts with app 5xx errors (Module 8)
+5. **Prediction**: Forecast shows disk 100% in 2 hours (Module 9)
+6. **LLM RCA**: Feed all data to Ollama → auto-generated incident report
+7. **Remediation**: Ansible playbook clears old logs (Module 10)
+8. **Recovery**: Verify system returns to healthy state
+9. **Post-Mortem**: Write the blameless post-mortem
+
+### Break / Fix Activity
+The capstone IS the break/fix — students inject the failure and must use every tool from Modules 1–10 to detect, diagnose, remediate, and document the incident.
+
+---
+
+## Module 12: AIOps Security & Compliance
+
+### Learning Objectives
+- ✓ Explain Zero Trust architecture and its relevance to AIOps
+- ✓ Use AIOps techniques to detect security anomalies
+- ✓ Implement basic network segmentation for isolation
+- ✓ Automate compliance checks for SOC2/GDPR requirements
+
+### Core Topics
+- Zero Trust architecture: "Never trust, always verify" (Google BeyondCorp model)
+- Network segmentation: isolating sensitive workloads
+- AIOps for security: behavioral anomaly detection (unusual login times, data exfiltration patterns)
+- SIEM correlation: security event correlation using AIOps techniques from Module 8
+- Insider threat detection: baseline normal behavior → alert on deviation
+- Compliance automation: automated checks for access controls, encryption, logging
+- SOC2 and GDPR basics: what they require from infrastructure teams
+
+### Zero Trust Lab
+Configure `iptables` rules on the VirtualBox VMs to enforce explicit access rules. Test: try to connect from db-server to the internet → should fail.
+
+### Security Anomaly Detection Lab
+Use the Isolation Forest model from Module 5, but on security data: login times, request frequency, data transfer volumes. Inject an "insider threat" pattern and verify the anomaly detector catches it.
+
+### Compliance Monitoring Lab
+Write a Python script that checks: SSH key rotation, root login disabled, expected firewall rules, log forwarding, database backups. Output a compliance report: PASS / FAIL.
+
+### Break / Fix Activity
+Simulate a security breach: open an unauthorized port on db-server, create a rogue SSH key, disable log forwarding. Run the compliance script — it should flag all violations. Fix each violation and verify.
+
+---
+
+## Module 13: Advanced Predictive Analysis — Markov Chains
+
+### Learning Objectives
+- ✓ Forecast system state transitions using Markov chain models
+- ✓ Identify degradation patterns before failures occur
+- ✓ Build state transition matrices from historical incident data
+- ✓ Trigger proactive alerts based on failure probabilities
+
+### Core Topics
+- Define system states: Healthy → Degraded → Critical → Failed
+- Calculate transition probabilities from historical incident data
+- Build state transition matrices for each infrastructure component
+- Predict probability of failure within next N time windows
+- Integrate with Ansible playbooks for automated prevention
+
+### Data Collection & Baselines Lab
+Gather historical metrics, logs, and event data. Clean and categorize the data into discrete operational states to establish baselines.
+
+### Markov State Modeling Lab
+Build a Python script that takes historical state data and calculates the transition probabilities between Healthy, Degraded, Critical, and Failed states. Output a state transition matrix.
+
+### Predictive Forecasting & Automation Lab
+Write a script that takes the current state (e.g., Critical) and the transition matrix to calculate the probability of transitioning to Failed within the next 30 minutes. If the probability exceeds 60%, trigger a webhook to an Ansible auto-remediation playbook.
+
+### Break / Fix Activity
+Inject load to push a system into the "Degraded" state. Watch the Markov model calculate a rising probability of failure. Observe the automated playbook trigger to restore the system to "Healthy" before it actually fails.

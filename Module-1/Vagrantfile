@@ -1,0 +1,73 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# =============================================================================
+# AIOps Course — Module 1: Multi-VM Lab Environment
+#
+# VMs:
+#   aiops-control (192.168.56.10) — Docker Compose, Streamlit RAG, Node Exporter
+#   app-server    (192.168.56.11) — Nginx, Flask app, Node Exporter
+#
+# Port Forwarding (host → guest):
+#   localhost:8501  → aiops-control:8501  (Streamlit UI)
+#   localhost:8081  → app-server:80       (Nginx)
+#   localhost:9100  → aiops-control:9100  (Node Exporter)
+#   localhost:9101  → app-server:9100     (Node Exporter)
+# =============================================================================
+
+Vagrant.configure("2") do |config|
+
+  # ---------------------------------------------------------------------------
+  # VM 1: aiops-control — RAG demo, Docker Compose, management node
+  # ---------------------------------------------------------------------------
+  config.vm.define "aiops-control" do |control|
+    control.vm.box = "bento/ubuntu-22.04"
+    control.vm.hostname = "aiops-control"
+
+    # Private network — VMs can talk to each other on this subnet
+    control.vm.network "private_network", ip: "192.168.56.10"
+
+    # Port forwarding — access services from your host browser
+    control.vm.network "forwarded_port", guest: 8501, host: 8501, auto_correct: true   # Streamlit
+    control.vm.network "forwarded_port", guest: 8000, host: 8000, auto_correct: true   # ChromaDB (bonus)
+    control.vm.network "forwarded_port", guest: 9100, host: 9100, auto_correct: true   # Node Exporter
+
+    # Disable default synced folder
+    control.vm.synced_folder ".", "/vagrant", disabled: true
+
+    # VirtualBox resource allocation
+    control.vm.provider "virtualbox" do |vb|
+      vb.memory = "2048"
+      vb.cpus = 2
+      vb.name = "aiops-control"
+    end
+
+    # Provisioning script — installs Docker, Docker Compose, copies RAG demo
+    control.vm.provision "shell", path: "scripts/setup-control.sh"
+  end
+
+  # ---------------------------------------------------------------------------
+  # VM 2: app-server — Nginx + Flask sample application
+  # ---------------------------------------------------------------------------
+  config.vm.define "app-server" do |app|
+    app.vm.box = "bento/ubuntu-22.04"
+    app.vm.hostname = "app-server"
+
+    app.vm.network "private_network", ip: "192.168.56.11"
+
+    app.vm.network "forwarded_port", guest: 80, host: 8081, auto_correct: true    # Nginx
+    app.vm.network "forwarded_port", guest: 9100, host: 9101, auto_correct: true  # Node Exporter
+
+    app.vm.synced_folder ".", "/vagrant", disabled: true
+
+    app.vm.provider "virtualbox" do |vb|
+      vb.memory = "1024"
+      vb.cpus = 1
+      vb.name = "app-server"
+    end
+
+    # Provisioning script — installs Python, Flask, Nginx
+    app.vm.provision "shell", path: "scripts/setup-app.sh"
+  end
+
+end
