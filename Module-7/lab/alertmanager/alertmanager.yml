@@ -1,0 +1,37 @@
+global:
+  resolve_timeout: 1m
+  smtp_smarthost: mailpit:1025
+  smtp_from: alertmanager@training.local
+  smtp_require_tls: false
+
+route:
+  receiver: default-notifications
+  group_by: [cluster, alertname]
+  group_wait: 15s
+  group_interval: 1m
+  repeat_interval: 4h
+  routes:
+    - receiver: critical-notifications
+      matchers: ['severity="critical"']
+      continue: false
+
+receivers:
+  - name: default-notifications
+    email_configs:
+      - to: sre-training@example.local
+        send_resolved: true
+    webhook_configs:
+      - url: http://webhook-receiver:5001/alert
+        send_resolved: true
+  - name: critical-notifications
+    email_configs:
+      - to: oncall-training@example.local
+        send_resolved: true
+    webhook_configs:
+      - url: http://webhook-receiver:5001/alert
+        send_resolved: true
+
+inhibit_rules:
+  - source_matchers: ['alertname="DatabaseDown"']
+    target_matchers: ['dependency="database"']
+    equal: [cluster]

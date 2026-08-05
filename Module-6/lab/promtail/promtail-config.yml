@@ -1,0 +1,39 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: flask
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: flask
+          service: aiops-app
+          environment: lab
+          __path__: /var/log/lab/flask/*.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<timestamp>\S+) (?P<severity>DEBUG|INFO|WARNING|ERROR|CRITICAL) (?P<message>.*)$'
+      - labels:
+          severity:
+
+  - job_name: nginx
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx
+          service: aiops-proxy
+          environment: lab
+          __path__: /var/log/lab/nginx/access.log
+    pipeline_stages:
+      - regex:
+          expression: '^(?P<remote_addr>\S+) - \S+ \[(?P<time_local>[^]]+)\] "(?P<method>\S+) (?P<path>\S+) \S+" (?P<status>\d{3}) (?P<body_bytes_sent>\d+)'
+      - labels:
+          method:
+          status:

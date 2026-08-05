@@ -1,0 +1,78 @@
+groups:
+  - name: database-alert-storm-drill
+    rules:
+      - alert: DatabaseDown
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: database, cluster: training, role: root-cause}
+        annotations: {summary: "Training database is unavailable"}
+      - alert: AppErrorsHigh
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: application, cluster: training, dependency: database}
+        annotations: {summary: "App errors caused by database failure"}
+      - alert: AppLatencyHigh
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: warning, team: application, cluster: training, dependency: database}
+        annotations: {summary: "App latency caused by database failure"}
+      - alert: ConnectionPoolExhausted
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: application, cluster: training, dependency: database}
+        annotations: {summary: "Connection pool exhausted"}
+      - alert: WebGatewayErrors
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: web, cluster: training, dependency: database}
+        annotations: {summary: "Gateway returning errors"}
+      - alert: CheckoutFailed
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: application, cluster: training, dependency: database}
+        annotations: {summary: "Checkout requests failing"}
+      - alert: LoginFailed
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: application, cluster: training, dependency: database}
+        annotations: {summary: "Login requests failing"}
+      - alert: QueueBacklog
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: warning, team: platform, cluster: training, dependency: database}
+        annotations: {summary: "Queue backlog increasing"}
+      - alert: WorkerRetriesHigh
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: warning, team: platform, cluster: training, dependency: database}
+        annotations: {summary: "Worker retries increasing"}
+      - alert: CacheMissesHigh
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: warning, team: platform, cluster: training, dependency: database}
+        annotations: {summary: "Cache misses increasing"}
+      - alert: ApiAvailabilityLow
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: application, cluster: training, dependency: database}
+        annotations: {summary: "API availability low"}
+      - alert: ReportGenerationFailed
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: warning, team: application, cluster: training, dependency: database}
+        annotations: {summary: "Reports cannot query database"}
+      - alert: SearchErrorsHigh
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: warning, team: application, cluster: training, dependency: database}
+        annotations: {summary: "Search errors increasing"}
+      - alert: UserComplaintsDetected
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: support, cluster: training, dependency: database}
+        annotations: {summary: "Users report service failures"}
+      - alert: SyntheticCheckFailed
+        expr: training_database_down == 1
+        for: 30s
+        labels: {severity: critical, team: sre, cluster: training, dependency: database}
+        annotations: {summary: "End-to-end check failed"}

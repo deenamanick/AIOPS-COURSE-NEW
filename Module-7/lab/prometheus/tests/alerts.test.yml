@@ -1,0 +1,26 @@
+rule_files:
+  - /etc/prometheus/rules/alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="flask-app",status="200"}'
+        values: '0+94x15'
+      - series: 'http_requests_total{job="flask-app",status="500"}'
+        values: '0+6x15'
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: HighErrorRate
+        exp_alerts:
+          - exp_labels:
+              alertname: HighErrorRate
+              cluster: training
+              job: flask-app
+              severity: critical
+              team: application
+            exp_annotations:
+              summary: "High HTTP error rate for flask-app"
+              description: "More than 5% of requests have returned 5xx for two minutes."
+              runbook_url: "https://example.invalid/runbooks/high-error-rate"

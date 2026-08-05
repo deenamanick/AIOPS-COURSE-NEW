@@ -1,0 +1,55 @@
+groups:
+  - name: required-alerts
+    rules:
+      - alert: HighCPU
+        expr: 100 * (1 - avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m]))) > 80
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          cluster: training
+        annotations:
+          summary: "High CPU on {{ $labels.instance }}"
+          description: "CPU usage has exceeded 80% for five minutes."
+          runbook_url: "https://example.invalid/runbooks/high-cpu"
+
+      - alert: HighErrorRate
+        expr: 100 * sum by (job) (rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum by (job) (rate(http_requests_total[5m])), 0.001) > 5
+        for: 2m
+        labels:
+          severity: critical
+          team: application
+          cluster: training
+        annotations:
+          summary: "High HTTP error rate for {{ $labels.job }}"
+          description: "More than 5% of requests have returned 5xx for two minutes."
+          runbook_url: "https://example.invalid/runbooks/high-error-rate"
+
+      - alert: DiskAlmostFull
+        expr: 100 * (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          cluster: training
+        annotations:
+          summary: "Disk almost full on {{ $labels.instance }}"
+          description: "Filesystem {{ $labels.mountpoint }} has exceeded 85% usage."
+          runbook_url: "https://example.invalid/runbooks/disk-almost-full"
+
+  - name: training-slo
+    rules:
+      - record: slo:availability:ratio_5m
+        expr: 1 - (sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 0.001))
+      - record: slo:error_budget_remaining:ratio_5m
+        expr: (0.005 - (1 - slo:availability:ratio_5m)) / 0.005
+      - alert: ErrorBudgetExhausted
+        expr: slo:error_budget_remaining:ratio_5m <= 0
+        for: 1m
+        labels:
+          severity: critical
+          team: application
+          cluster: training
+        annotations:
+          summary: "Training error budget exhausted"
+          description: "The five-minute training window has consumed its 99.5% SLO budget."
