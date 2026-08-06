@@ -1,0 +1,34 @@
+services:
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - nginx-logs:/var/log/nginx
+    ports:
+      - "8080:80"
+    depends_on: [app]
+    restart: unless-stopped
+
+  app:
+    build: ./app
+    environment:
+      - HOSTNAME=flask-app-01
+      - ENVIRONMENT=training
+    volumes:
+      - shared-data:/data
+    expose: ["5000"]
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+
+  correlation-engine:
+    build: ./correlation-engine
+    volumes:
+      - shared-data:/data
+    depends_on: [app]
+    restart: unless-stopped
+
+volumes:
+  nginx-logs:
+  shared-data:
+
