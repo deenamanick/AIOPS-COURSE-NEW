@@ -1,10 +1,12 @@
 # AIOps Module 1 — RAG Demo Stack
-## Runs on aiops-control VM (192.168.56.10)
-## Access Streamlit UI from host: http://localhost:8501
+# Runs on aiops-control VM (192.168.56.10)
+# Access Streamlit UI from host: http://localhost:8501
+
+services:
 
   # ---------------------------------------------------------------------------
-  ## ChromaDB — Vector Database
-  ## Start this first before rag-app
+  # ChromaDB — Vector Database
+  # Start this first before rag-app
   # ---------------------------------------------------------------------------
   chromadb:
     image: chromadb/chroma:0.5.23       # Pinned version — stable & v2 API
@@ -71,4 +73,3 @@ networks:
     ipam:
       config:
         - subnet: 172.28.0.0/24
-  
