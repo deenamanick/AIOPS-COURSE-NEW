@@ -46,7 +46,7 @@ services:
       - CHROMA_PORT=8000
     depends_on:
       chromadb:
-        condition: service_healthy      # Wait for ChromaDB healthy ✅
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - rag-net
@@ -55,7 +55,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s               # Give Streamlit time to start
+      start_period: 60s
 
 # -----------------------------------------------------------------------------
 # Volumes
@@ -72,4 +72,5 @@ networks:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.28.0.0/24       # Fixed subnet — no conflicts
+        - subnet: 172.28.0.0/24
+  
