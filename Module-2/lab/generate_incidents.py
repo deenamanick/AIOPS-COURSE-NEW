@@ -1,12 +1,28 @@
+"""
+AIOps Lab — Incident Data Generator
+This script creates a fake dataset of historical IT incidents. 
+We use this dataset to give our AI 'past experience' to learn from.
+"""
+
+# 'csv' helps us read and write comma-separated values files (like a spreadsheet).
 import csv
+
+# 'random' lets us make random choices, like picking a random server or error type.
 import random
+
+# 'datetime' helps us work with dates and times so our fake incidents have timestamps.
 from datetime import datetime, timedelta
 
 def generate_incidents(num_incidents=50):
+    # A list of fake services in our imaginary architecture.
     services = ["billing-api", "user-auth", "inventory-db", "frontend-web", "payment-gateway"]
+    
+    # Priority levels for incidents (P1 is critical, P4 is low priority).
     severities = ["P1", "P2", "P3", "P4"]
     
-    # Pre-defined templates for realistic IT ops issues
+    # Pre-defined templates for realistic IT operations issues. 
+    # Each has a description (desc), root cause (rc), and resolution (res).
+    # The '{}' is a placeholder where we will inject the name of the service.
     issue_templates = [
         {"desc": "High CPU utilization on {} due to heavy garbage collection.", "rc": "Memory leak in Java microservice.", "res": "Restarted pods and applied patch for memory leak."},
         {"desc": "Database connection pool exhausted in {}.", "rc": "Unclosed connections in legacy API endpoint.", "res": "Increased pool size and fixed unclosed connections in code."},
@@ -19,29 +35,42 @@ def generate_incidents(num_incidents=50):
     ]
 
     incidents = []
+    # Start generating timestamps from 30 days ago.
     base_time = datetime.now() - timedelta(days=30)
 
+    # Loop to create exactly 'num_incidents' records.
     for i in range(num_incidents):
+        # Randomly pick a service and an issue template.
         svc = random.choice(services)
         template = random.choice(issue_templates)
         
+        # Build a dictionary representing one incident.
         incident = {
-            "id": f"INC-{1000 + i}",
-            "timestamp": (base_time + timedelta(hours=random.randint(1, 720))).isoformat(),
+            "id": f"INC-{1000 + i}",  # E.g., INC-1000, INC-1001...
+            "timestamp": (base_time + timedelta(hours=random.randint(1, 720))).isoformat(), # Random time in the last month
             "service": svc,
             "severity": random.choice(severities),
-            "description": template["desc"].format(svc),
+            "description": template["desc"].format(svc), # Injects the service name into the description
             "root_cause": template["rc"],
             "resolution": template["res"]
         }
+        # Add it to our list.
         incidents.append(incident)
 
+    # Open a new file called 'incidents.csv' in write mode ('w').
     with open("incidents.csv", "w", newline='') as f:
+        # Create a CSV writer and tell it what the column headers are.
         writer = csv.DictWriter(f, fieldnames=["id", "timestamp", "service", "severity", "description", "root_cause", "resolution"])
+        
+        # Write the top header row.
         writer.writeheader()
+        
+        # Write all the incidents we generated as rows in the CSV.
         writer.writerows(incidents)
     
     print(f"Successfully generated incidents.csv with {num_incidents} records.")
 
+# This block ensures the code only runs if we run this script directly.
 if __name__ == "__main__":
+    # Generate exactly 100 fake incidents when this script is run.
     generate_incidents(100)

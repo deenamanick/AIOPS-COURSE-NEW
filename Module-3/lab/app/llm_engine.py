@@ -1,5 +1,8 @@
+# 'os' allows us to read environment variables (like passwords or API keys) from the computer.
 import os
+# 'OpenAI' is the official library to talk to ChatGPT.
 from openai import OpenAI
+# 'load_dotenv' helps us read secrets from a local .env file.
 from dotenv import load_dotenv
 
 # Load environment variables (like OPENAI_API_KEY) from .env file
@@ -24,6 +27,7 @@ def generate_rca(current_incident: str, historical_context: list) -> str:
         context_str += f"\nResolution: {incident['resolution']}\n"
         
     # 2. Build the System Prompt (The Persona and Rules)
+    # The system prompt tells the AI how it should behave and set its identity.
     system_prompt = """
     You are an expert Site Reliability Engineer (SRE) Assistant. 
     Your job is to analyze new IT incidents and provide a Root Cause Analysis (RCA) and Remediation Plan.
@@ -34,6 +38,7 @@ def generate_rca(current_incident: str, historical_context: list) -> str:
     """
     
     # 3. Build the User Prompt (The Data)
+    # This is the actual question/data we are passing to the AI for this specific run.
     user_prompt = f"""
     Please analyze this new incident:
     "{current_incident}"
@@ -50,15 +55,20 @@ def generate_rca(current_incident: str, historical_context: list) -> str:
     # 4. Call the OpenAI API
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo", # You can use gpt-4o as well
+            # model="gpt-3.5-turbo", # You can use gpt-4o as well
+            model="gpt-4o", # We recommend gpt-4o for better logic 
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            temperature=0.2, # Low temperature for more deterministic/factual output
+            # Temperature controls creativity. 
+            # 0.2 is low, meaning the AI will be more factual and deterministic.
+            temperature=0.2, 
         )
         
+        # Extract the actual text response from the API result
         return response.choices[0].message.content
         
     except Exception as e:
+        # If something goes wrong (like a bad API key), return the error message nicely
         return f"Error connecting to LLM: {str(e)}"
