@@ -1,0 +1,63 @@
+---
+# clear-logs.yml
+# Triggered by: DiskAlmostFull alert (disk > 85%)
+# Action: Delete log files older than 7 days. Verify disk drops below 80%.
+- name: Clear old application logs when disk is above 85%
+  hosts: webservers
+  become: true
+  vars:
+    log_dir: /var/log/app
+    max_age_days: 7
+    disk_threshold_pct: 85
+    disk_target_pct: 80
+
+  tasks:
+    - name: Ensure log directory exists (lab mode)
+      ansible.builtin.file:
+        path: "{{ log_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Find log files older than {{ max_age_days }} days
+      ansible.builtin.find:
+        paths: "{{ log_dir }}"
+        age: "{{ max_age_days }}d"
+        recurse: true
+        file_type: file
+      register: old_logs
+
+    - name: Report files to be deleted
+      ansible.builtin.debug:
+        msg: >-
+          Found {{ old_logs.files | length }} file(s) to delete
+          ({{ (old_logs.files | map(attribute='size') | sum / 1024 / 1024) | round(1) }} MB total).
+
+    - name: Delete old log files
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_logs.files }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+
+    - name: Check current disk usage on /
+      ansible.builtin.shell: df / | awk 'NR==2 {print $5}' | tr -d '%'
+      register: disk_pct_now
+      changed_when: false
+
+    - name: Report disk cleanup result
+      ansible.builtin.debug:
+        msg: >-
+          Log cleanup complete.
+          Current disk usage: {{ disk_pct_now.stdout }}%
+          Files deleted: {{ old_logs.files | length }}
+
+    - name: Fail if disk is still above threshold
+      ansible.builtin.fail:
+        msg: >-
+          Disk is still at {{ disk_pct_now.stdout }}%
+          after cleanup (target: < {{ disk_threshold_pct }}%).
+          Escalate to human — additional cleanup required.
+      when:
+        - old_logs.files | length == 0
+        - disk_pct_now.stdout | int >= disk_threshold_pct

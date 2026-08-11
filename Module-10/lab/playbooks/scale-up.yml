@@ -1,0 +1,56 @@
+---
+# scale-up.yml
+# Triggered by: HighCPULoad alert (CPU > 80% for 5 minutes)
+# Action: Add one more app container replica via Docker Compose.
+- name: Scale up app server when CPU load is high
+  hosts: appservers
+  become: true
+  vars:
+    compose_file: /opt/app/docker-compose.yml
+    service_name: app
+    max_replicas: 5
+    webhook_url: "http://localhost:5001/api/metrics"
+
+  tasks:
+    - name: Get current replica count via Docker Compose
+      ansible.builtin.shell: |
+        docker compose -f {{ compose_file }} ps --quiet {{ service_name }} 2>/dev/null | wc -l
+      register: current_replicas
+      changed_when: false
+      ignore_errors: true
+
+    - name: Default to 1 replica if docker-compose not available (lab mode)
+      ansible.builtin.set_fact:
+        replica_count: "{{ current_replicas.stdout | default('1') | int }}"
+
+    - name: Fail if already at maximum replicas
+      ansible.builtin.fail:
+        msg: >-
+          Already at maximum replicas ({{ max_replicas }}).
+          Escalate to human — additional capacity planning required.
+      when: replica_count | int >= max_replicas
+
+    - name: Scale up by one replica
+      ansible.builtin.shell: |
+        docker compose -f {{ compose_file }} up \
+          --scale {{ service_name }}={{ replica_count | int + 1 }} \
+          --no-recreate -d
+      register: scale_result
+      ignore_errors: true
+
+    - name: Report scale result
+      ansible.builtin.debug:
+        msg: >-
+          Scaled {{ service_name }} from {{ replica_count }} to
+          {{ replica_count | int + 1 }} replicas.
+          {% if scale_result is failed %}
+          (Lab mode: Docker Compose not running — scale simulated.)
+          {% endif %}
+
+    - name: Wait for new replica to become healthy (lab mode: just wait)
+      ansible.builtin.pause:
+        seconds: 10
+
+    - name: Confirm scale success
+      ansible.builtin.debug:
+        msg: "Scale-up complete. Verify CPU load is recovering via {{ webhook_url }}"

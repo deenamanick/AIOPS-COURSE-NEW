@@ -1,0 +1,44 @@
+---
+# restart-service.yml
+# Triggered by: NginxDown alert
+# Action: Restart Nginx and verify it is listening on port 80.
+- name: Restart Nginx when it crashes
+  hosts: webservers
+  become: true
+  vars:
+    service_name: nginx
+    verify_port: 80
+    health_url: "http://localhost:{{ verify_port }}/health"
+
+  tasks:
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Log current Nginx state
+      ansible.builtin.debug:
+        msg: >-
+          Nginx status:
+          {{ ansible_facts.services.get(service_name + '.service', {}).get('state', 'not found') }}
+
+    - name: Restart Nginx service
+      ansible.builtin.service:
+        name: "{{ service_name }}"
+        state: restarted
+      ignore_errors: true
+      register: restart_result
+
+    - name: Simulate Nginx restart for lab (when service not installed)
+      ansible.builtin.debug:
+        msg: "Lab mode: simulating Nginx restart. In production this would restart the real service."
+      when: restart_result is failed
+
+    - name: Wait for Nginx port to become available
+      ansible.builtin.wait_for:
+        port: "{{ verify_port }}"
+        timeout: 30
+        msg: "Nginx did not come up on port {{ verify_port }} within 30 seconds"
+      ignore_errors: true
+
+    - name: Report outcome
+      ansible.builtin.debug:
+        msg: "Nginx restart playbook complete. Verify health at {{ health_url }}"

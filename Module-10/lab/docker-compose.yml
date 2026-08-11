@@ -1,0 +1,13 @@
+services:
+  app:
+    build: ./app
+    environment:
+      - HOSTNAME=remediation-lab-01
+      - ENVIRONMENT=training
+    ports:
+      - "5001:5001"
+    restart: unless-stopped
+    volumes:
+      - ./playbooks:/app/playbooks:ro
+
+volumes: {}
