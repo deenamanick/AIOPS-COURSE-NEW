@@ -1,0 +1,11 @@
+services:
+  app:
+    build: ./app
+    environment:
+      - HOSTNAME=security-lab-01
+      - ENVIRONMENT=training
+    ports:
+      - "5003:5003"
+    restart: unless-stopped
+
+volumes: {}
