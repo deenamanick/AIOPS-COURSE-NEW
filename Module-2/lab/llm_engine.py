@@ -1,13 +1,14 @@
 """
 AIOps Lab — LLM Engine
-This script handles communication with OpenAI. It takes the context we found in 
-ChromaDB (the historical incidents) and asks the AI to analyze the new incident based on that history.
+This script handles communication with the Groq API (running Llama 3.1 8B). It takes the context 
+we found in ChromaDB (the historical incidents) and asks the AI to analyze the new incident based on that history.
 """
 
 import os
 
-# 'OpenAI' is the official library to communicate with OpenAI's API.
-from openai import OpenAI
+# Groq provides a free, ultra-fast API for open-source LLMs like Llama 3.
+# The Groq SDK is OpenAI-compatible, so the code structure is nearly identical.
+from groq import Groq
 
 # 'load_dotenv' reads secret variables (like API keys) from a hidden file called '.env'
 # so we don't have to put passwords directly into our code.
@@ -16,9 +17,9 @@ from dotenv import load_dotenv
 # Load the environment variables from the .env file.
 load_dotenv()
 
-# Initialize the OpenAI client.
-# The client automatically looks for an environment variable named 'OPENAI_API_KEY'.
-client = OpenAI()
+# Initialize the Groq client.
+# The client automatically looks for an environment variable named 'GROQ_API_KEY'.
+client = Groq()
 
 def generate_rca(current_incident: str, historical_context: list) -> str:
     """
@@ -62,12 +63,12 @@ def generate_rca(current_incident: str, historical_context: list) -> str:
     3. **Confidence Level** (High/Medium/Low based on how closely it matches history)
     """
     
-    # 4. Call the OpenAI API
+    # 4. Call the Groq API (runs Llama 3.1 8B at ultra-low latency)
     try:
-        # We use the 'chat.completions' feature, which is the standard way to talk to ChatGPT models.
+        # We use the 'chat.completions' feature, which follows the same OpenAI-compatible interface.
         response = client.chat.completions.create(
-            # We specify which AI model to use. gpt-3.5-turbo is fast and cheap, but gpt-4o is smarter.
-            model="gpt-3.5-turbo", 
+            # Llama 3.1 8B is free on Groq and runs at ~500 tokens/second
+            model="llama-3.1-8b-instant", 
             messages=[
                 # We send both the system rules and the user data together.
                 {"role": "system", "content": system_prompt},

@@ -1,16 +1,17 @@
 # 'os' allows us to read environment variables (like passwords or API keys) from the computer.
 import os
-# 'OpenAI' is the official library to talk to ChatGPT.
-from openai import OpenAI
+# Groq provides a free, ultra-fast API for open-source LLMs like Llama 3.
+# The Groq SDK is OpenAI-compatible, so the code structure is nearly identical.
+from groq import Groq
 # 'load_dotenv' helps us read secrets from a local .env file.
 from dotenv import load_dotenv
 
-# Load environment variables (like OPENAI_API_KEY) from .env file
+# Load environment variables (like GROQ_API_KEY) from .env file
 load_dotenv()
 
-# Initialize the OpenAI client
-# It will automatically look for the OPENAI_API_KEY environment variable
-client = OpenAI()
+# Initialize the Groq client
+# It will automatically look for the GROQ_API_KEY environment variable
+client = Groq()
 
 def generate_rca(current_incident: str, historical_context: list) -> str:
     """
@@ -52,11 +53,11 @@ def generate_rca(current_incident: str, historical_context: list) -> str:
     3. **Confidence Level** (High/Medium/Low based on how closely it matches history)
     """
     
-    # 4. Call the OpenAI API
+    # 4. Call the Groq API (runs Llama 3.1 8B at ultra-low latency)
     try:
         response = client.chat.completions.create(
-            # model="gpt-3.5-turbo", # You can use gpt-4o as well
-            model="gpt-4o", # We recommend gpt-4o for better logic 
+            # Llama 3.1 8B is free on Groq and runs at ~500 tokens/second
+            model="llama-3.1-8b-instant",
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}

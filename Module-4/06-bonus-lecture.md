@@ -158,3 +158,9 @@ Provide screenshots showing:
 Answer the following (2-3 sentences each):
 1. **Scenario A**: Your team currently deploys once a week. Using the DORA framework, which metric is this, and what would you change to improve it to "Elite" level?
 2. **Scenario B**: A canary deployment shows that 5% of requests to the new model version are returning HTTP 500 errors. What action should you take, and which DORA metric does this protect?
+
+### Deliverable 6: Golden Dataset Reflection (Written Answers)
+In the previous lessons, we explored how Jeevisoft utilizes a False Positive Catalog as an empirical "Golden Dataset" to dynamically fine-tune their LLM reviewer via prompt injection.
+Answer the following (2-3 sentences each):
+1. Think about an AI or machine learning application at your own company (or a hypothetical company). Describe a specific hallucination, false positive, or recurring error that the AI might make.
+2. How would you construct a "Golden Dataset" to mitigate this specific error, and how would you apply it (e.g., offline CI/CD testing, prompt injection, or model retraining)?

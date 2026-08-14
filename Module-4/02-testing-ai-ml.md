@@ -267,6 +267,18 @@ def test_golden_dataset_accuracy():
 
 ---
 
+### 💡 Real-World Case Study: Golden Datasets at Jeevisoft
+
+At our company, we don't just use golden datasets for offline CI/CD testing—we use them dynamically in production for **Prompt-Based Fine-Tuning**. 
+
+In our `jeevi-ai-reviewer` (an LLM-powered static analysis bot), the AI sometimes hallucinates false positives (e.g., flagging native D1 SQL as a missing ORM, or complaining about a missing `LIMIT` on a bounded query). 
+
+When these occur, our engineers document the exact hallucination and the required architectural correction into an `AI-FALSE-POSITIVES-CATALOG.MD`. This catalog acts as our empirical **Golden Dataset**. 
+
+Instead of retraining the base model, we inject this golden dataset directly into the LLM's system prompt (the Negative Constraint Engine). This ensures the AI is perfectly calibrated against our specific architectural patterns without writing thousands of lines of traditional tests!
+
+---
+
 ## Running the Test Suite
 
 Execute all 5 tests from the project root:

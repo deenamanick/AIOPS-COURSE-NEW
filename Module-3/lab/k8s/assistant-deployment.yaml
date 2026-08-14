@@ -21,11 +21,11 @@ spec:
         ports:
         - containerPort: 8501
         env:
-        - name: OPENAI_API_KEY
+        - name: GROQ_API_KEY
           valueFrom:
             secretKeyRef:
               name: aiops-assistant-secret
-              key: openai-api-key
+              key: groq-api-key
         resources:
           requests:
             memory: "400Mi"
