@@ -84,6 +84,62 @@ docker compose ps
 
 ---
 
+## Understanding the Lab Application (`app/app.py`)
+
+The core of this lab is a small **Flask web server** that is pre-wired with Prometheus metrics and structured logging. Before diving into the lessons, here's what the app does and why each piece matters.
+
+### How Logging Works
+
+When the app starts, it configures Python's logging to write to **two places at once**:
+1. A **log file** on disk (default: `app.log`) — this is what Promtail will tail and ship to Loki.
+2. The **terminal** (stdout) — so you can see logs in real-time via `docker compose logs`.
+
+Every log line is written in a structured format like:
+```text
+2024-01-15T10:30:00Z INFO method=GET path=/ status=200 duration=0.0012
+```
+This key=value format makes it easy to search and filter logs later in Loki using LogQL.
+
+### Prometheus Metrics (Built-In)
+
+The app automatically creates two Prometheus metrics:
+
+| Metric Name | Type | What It Tracks |
+|---|---|---|
+| `http_requests_total` | **Counter** | Total number of HTTP requests, labeled by method, endpoint, and status code. Goes up by 1 on every request. |
+| `http_request_duration_seconds` | **Histogram** | How long each request took (in seconds). Allows you to calculate percentiles (p50, p95, p99). |
+
+These metrics are automatically collected on **every request** — the app starts a stopwatch before processing and records the elapsed time after. The `/metrics` endpoint itself is excluded to avoid counting Prometheus scrapes.
+
+### The 5 Endpoints You'll Use
+
+| Endpoint | What It Does | Why It Exists |
+|---|---|---|
+| `GET /` | Returns `{"status": "ok"}` | Basic health check — confirms the app is running |
+| `GET /health` | Returns `{"status": "healthy"}` | Kubernetes-style liveness probe |
+| `GET /error` | Logs an ERROR and returns **HTTP 500** | **Your knob to simulate failures** — hit this to generate error metrics and error logs |
+| `GET /slow` | Sleeps for 1 second, then responds | **Your knob to simulate latency** — hit this to generate slow response metrics |
+| `GET /metrics` | Returns raw Prometheus metrics text | **Prometheus scrapes this endpoint** every 15 seconds to collect all the counters and histograms |
+
+### How It All Connects
+
+```
+  You (curl/browser)
+       │
+       ▼
+  ┌─────────────┐     Prometheus scrapes /metrics every 15s
+  │  Flask App  │ ◄──────────────────────────────────────── Prometheus
+  │  (port 5000)│
+  │             │──── writes logs to app.log ──── Promtail ──── Loki
+  └─────────────┘
+                                                          Grafana reads
+                                                          from both ───► 📊 Dashboards
+```
+
+**In practice:** You'll hit `/error` and `/slow` with `curl` to generate bad telemetry, then switch to Grafana to see the spikes appear in real-time on your dashboards and trace them back to specific log entries in Loki.
+
+---
+
 ## Lessons in this Module
 
 | # | Lesson | What You'll Do |
