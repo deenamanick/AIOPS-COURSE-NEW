@@ -21,8 +21,8 @@ By the end of this module, you will be able to:
 
 - ✅ Module 4 completed (CI/CD pipeline and Kubernetes cluster are operational)
 - ✅ Python 3.11+ installed with `pip`
-- ✅ Familiarity with basic Python (NumPy arrays, pandas DataFrames)
-- ✅ No ML experience required — this module teaches from scratch
+- ✅ Basic Python knowledge (variables, loops, if/else) — no data science experience needed
+- ✅ No ML experience required — this module teaches everything from scratch
 
 ---
 
