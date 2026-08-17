@@ -34,28 +34,31 @@ An anomaly is flagged when the raw data point deviates from the moving average b
 import pandas as pd
 import numpy as np
 
-# Load data
+# Load data into our spreadsheet
 df = pd.read_csv('server_telemetry.csv')
 
 # Parameters
-window_size = 10    # Look at the last 10 data points
+window_size = 10    # Look at the last 10 data points (which equals 50 minutes of data)
 n_std = 2           # Flag if outside 2 rolling standard deviations
 
 # Calculate rolling mean and standard deviation for CPU
+# .rolling(window=10).mean() calculates the average of the last 10 rows
 df['cpu_rolling_mean'] = df['cpu_percent'].rolling(window=window_size, center=False).mean()
+# .rolling(window=10).std() calculates the standard deviation of the last 10 rows
 df['cpu_rolling_std'] = df['cpu_percent'].rolling(window=window_size, center=False).std()
 
-# Define upper and lower bounds
+# Define upper and lower bounds (creating a safe "band" of normal behavior)
 df['cpu_upper_band'] = df['cpu_rolling_mean'] + (n_std * df['cpu_rolling_std'])
 df['cpu_lower_band'] = df['cpu_rolling_mean'] - (n_std * df['cpu_rolling_std'])
 
 # Flag anomalies: outside the rolling band
+# np.where(condition, true_value, false_value) assigns -1 if outside the band, else 1
 df['cpu_ma_anomaly'] = np.where(
     (df['cpu_percent'] > df['cpu_upper_band']) | (df['cpu_percent'] < df['cpu_lower_band']),
     -1, 1
 )
 
-# Drop NaN rows from the initial window
+# .dropna() removes the first 9 rows because they don't have enough history to calculate a 10-row average
 df_valid = df.dropna()
 n_anomalies = (df_valid['cpu_ma_anomaly'] == -1).sum()
 print(f"🔴 Moving Average anomalies (CPU, window={window_size}, {n_std}σ): {n_anomalies}")

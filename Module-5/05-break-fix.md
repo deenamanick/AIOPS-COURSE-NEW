@@ -16,29 +16,45 @@ Create a new file `inject_anomalies.py` in the lab directory:
 import pandas as pd
 import numpy as np
 
-# Load clean data
+# -------------------------------------------------------------------
+# STEP 1: Load our normal data into a DataFrame (spreadsheet)
+# -------------------------------------------------------------------
+# pd.read_csv reads a CSV file and converts it into a pandas DataFrame object
 df = pd.read_csv('server_telemetry.csv')
 print(f"Original dataset: {len(df)} rows")
 
+# We add a new column to our spreadsheet called 'injected_anomaly' and set every row to 'none'
+df['injected_anomaly'] = 'none'
+
+# -------------------------------------------------------------------
+# STEP 2: Manually inject large, obvious anomalies
+# -------------------------------------------------------------------
+
 # --- Anomaly Type 1: CPU Spike ---
-# Simulate a sudden CPU spike to 99% for 5 consecutive data points
+# We want to simulate a severe CPU spike starting at row 200
 spike_start = 200
+# range(200, 205) will loop 5 times (rows 200, 201, 202, 203, 204)
 for i in range(spike_start, spike_start + 5):
+    # df.loc[row, column] targets exactly one cell to overwrite
     df.loc[i, 'cpu_percent'] = np.random.uniform(95, 99)
+    # Label this row so we can track it later
     df.loc[i, 'injected_anomaly'] = 'cpu_spike'
 print(f"💥 Injected CPU spike at rows {spike_start}-{spike_start+4}")
 
 # --- Anomaly Type 2: Memory Leak (Gradual Increase) ---
-# Simulate memory slowly climbing from 65% to 97% over 20 data points
+# A memory leak isn't a sudden spike; memory usage slowly climbs until it crashes.
 leak_start = 500
+# We will simulate the leak over 20 time periods (rows 500 to 519)
 for i in range(leak_start, leak_start + 20):
+    # Calculate how far along we are in the 20-step leak (from 0.0 to 1.0)
     progress = (i - leak_start) / 20
-    df.loc[i, 'memory_percent'] = 65 + (progress * 32)  # 65% → 97%
+    # Gradually increase memory from a baseline of 65% up to ~97%
+    df.loc[i, 'memory_percent'] = 65 + (progress * 32)
     df.loc[i, 'injected_anomaly'] = 'memory_leak'
 print(f"💧 Injected memory leak at rows {leak_start}-{leak_start+19}")
 
 # --- Anomaly Type 3: Disk Fill ---
-# Simulate disk I/O spiking to 1800+ for 8 consecutive points
+# Simulating a massive burst of disk writes
 fill_start = 750
 for i in range(fill_start, fill_start + 8):
     df.loc[i, 'disk_iops'] = np.random.uniform(1500, 1850)
@@ -48,10 +64,16 @@ print(f"💾 Injected disk fill at rows {fill_start}-{fill_start+7}")
 # Fill remaining rows
 df['injected_anomaly'] = df['injected_anomaly'].fillna('none')
 
-# Save
+# -------------------------------------------------------------------
+# STEP 3: Save the contaminated dataset
+# -------------------------------------------------------------------
+# Save the new version of our table to a new CSV file
 df.to_csv('server_telemetry_injected.csv', index=False)
 print(f"\n✅ Saved to server_telemetry_injected.csv")
-print(f"   Total injected anomalies: {(df['injected_anomaly'] != 'none').sum()}")
+
+# Count how many rows do NOT have 'none' in the anomaly column
+total_injected = (df['injected_anomaly'] != 'none').sum()
+print(f"   Total injected anomalies: {total_injected}")
 ```
 
 ### Step 2: Run the Injection
@@ -85,43 +107,73 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
-# Load injected data
+# -------------------------------------------------------------------
+# SETUP: Load data and select the columns we care about
+# -------------------------------------------------------------------
+# Load the contaminated CSV into a pandas DataFrame (spreadsheet)
 df = pd.read_csv('server_telemetry_injected.csv')
+
+# These are the 4 "features" (metrics) the AI/algorithms will look at
 features = ['cpu_percent', 'memory_percent', 'network_mbps', 'disk_iops']
+
+# X is just a smaller spreadsheet containing ONLY those 4 columns (no timestamps or labels)
 X = df[features]
 
 # ─────────────────────────────────────────────────
-# Method 1: Isolation Forest
+# Method 1: Isolation Forest (Machine Learning)
 # ─────────────────────────────────────────────────
+# Isolation Forest is an AI algorithm that builds random decision trees.
+# "Anomalies" are data points that get isolated very quickly because they look so different.
+# contamination=0.05 tells the AI "Expect about 5% of this data to be bad."
 iso_model = IsolationForest(contamination=0.05, random_state=42, n_jobs=-1)
+
+# .fit(X) tells the AI to study the data and learn what "normal" looks like.
 iso_model.fit(X)
+
+# .predict(X) asks the AI to grade the data. It returns 1 for "Normal" and -1 for "Anomaly".
+# We save these grades in a new column called 'iso_forest'
 df['iso_forest'] = iso_model.predict(X)
 
 # ─────────────────────────────────────────────────
-# Method 2: Z-Score (threshold=3)
+# Method 2: Z-Score (Statistical thresholds)
 # ─────────────────────────────────────────────────
+# The Z-Score tells us how many "standard deviations" a number is away from the average.
+# A Z-score of 3 means the data is EXTREMELY rare (like a 1-in-1000 event).
 z_threshold = 3
+
 for col in features:
+    # Calculate Z-score: (Current Value - Average) / Standard Deviation
     df[f'{col}_z'] = (df[col] - df[col].mean()) / df[col].std()
 
 z_cols = [f'{col}_z' for col in features]
+
+# .apply() runs a custom function on every single row.
+# If ANY of the 4 columns in a row have a Z-score greater than 3 (or less than -3), flag it as -1 (Anomaly)
 df['zscore'] = df[z_cols].apply(
     lambda row: -1 if any(abs(row) > z_threshold) else 1, axis=1
 )
 
 # ─────────────────────────────────────────────────
-# Method 3: Moving Average (window=10, band=2σ)
+# Method 3: Moving Average (Time-based thresholds)
 # ─────────────────────────────────────────────────
-window = 10
-n_std = 2
+# A moving average looks at the "recent past" to decide if the "present" is weird.
+window = 10 # Look at the last 10 rows (which equals the last 50 minutes of data)
+n_std = 2   # Flag anything that is 2 standard deviations away from that recent average
+
 for col in features:
+    # .rolling(window=10).mean() calculates the average of the last 10 rows
     rm = df[col].rolling(window=window).mean()
+    # .rolling(window=10).std() calculates the standard deviation of the last 10 rows
     rs = df[col].rolling(window=window).std()
+    
+    # np.where(condition, true_value, false_value)
+    # If the current value is way above or way below the recent average, flag it as -1 (Anomaly)
     df[f'{col}_ma'] = np.where(
         (df[col] > rm + n_std * rs) | (df[col] < rm - n_std * rs), -1, 1
     )
 
 ma_cols = [f'{col}_ma' for col in features]
+# Combine the results: if ANY metric in the row triggered the moving average, the whole row is an anomaly
 df['moving_avg'] = df[ma_cols].apply(
     lambda row: -1 if any(row == -1) else 1, axis=1
 )
@@ -129,6 +181,7 @@ df['moving_avg'] = df[ma_cols].apply(
 # ─────────────────────────────────────────────────
 # Compare: How many injected anomalies did each method catch?
 # ─────────────────────────────────────────────────
+# Filter our spreadsheet to ONLY show rows where we manually injected a fake anomaly
 injected = df[df['injected_anomaly'] != 'none']
 
 print("=" * 70)
@@ -136,8 +189,11 @@ print("ANOMALY DETECTION COMPARISON REPORT")
 print("=" * 70)
 
 for anomaly_type in ['cpu_spike', 'memory_leak', 'disk_fill']:
+    # Filter down to just this specific type of anomaly
     subset = injected[injected['injected_anomaly'] == anomaly_type]
     total = len(subset)
+    
+    # Count how many times each method correctly guessed "-1" (Anomaly) for these rows
     iso_caught = (subset['iso_forest'] == -1).sum()
     z_caught = (subset['zscore'] == -1).sum()
     ma_caught = (subset['moving_avg'] == -1).sum()
@@ -150,11 +206,15 @@ for anomaly_type in ['cpu_spike', 'memory_leak', 'disk_fill']:
     print(f"  Z-Score (3σ):      {z_caught}/{total} caught ({z_caught/total*100:.0f}%)")
     print(f"  Moving Average:    {ma_caught}/{total} caught ({ma_caught/total*100:.0f}%)")
 
-# Overall false positive count
+# -------------------------------------------------------------------
+# FALSE POSITIVE ANALYSIS
+# -------------------------------------------------------------------
+# Filter our spreadsheet to ONLY show "normal" rows (where we didn't inject anything)
 non_injected = df[df['injected_anomaly'] == 'none']
 print(f"\n{'=' * 70}")
-print("FALSE POSITIVE ANALYSIS (Non-injected data flagged as anomaly)")
+print("FALSE POSITIVE ANALYSIS (Normal data accidentally flagged as bad)")
 print(f"{'=' * 70}")
+# Count how many times the method WRONGLY guessed "-1" for normal data
 print(f"  Isolation Forest:  {(non_injected['iso_forest'] == -1).sum()} false positives")
 print(f"  Z-Score:           {(non_injected['zscore'] == -1).sum()} false positives")
 print(f"  Moving Average:    {(non_injected['moving_avg'] == -1).sum()} false positives")

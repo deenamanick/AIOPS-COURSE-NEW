@@ -37,9 +37,14 @@ In the `lab/` directory, there is a CSV file named `server_telemetry.csv` contai
 ```python
 import pandas as pd
 
+# Load the CSV file into a pandas DataFrame (which is like a spreadsheet in Python)
 df = pd.read_csv('server_telemetry.csv')
+
+# .head(10) prints the first 10 rows of the spreadsheet so we can peek at the data
 print(df.head(10))
+# .shape tells us the number of rows and columns (e.g., 1000 rows, 5 columns)
 print(f"\nDataset shape: {df.shape}")
+# .describe() automatically calculates mean, min, max, and standard deviation for every column
 print(f"\nColumn statistics:\n{df.describe()}")
 ```
 
@@ -70,28 +75,31 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import IsolationForest
 
-# Load data
+# Load data into our spreadsheet
 df = pd.read_csv('server_telemetry.csv')
 
-# Select feature columns (exclude timestamp)
+# Select the 4 feature columns we want the AI to analyze (exclude the timestamp)
 features = ['cpu_percent', 'memory_percent', 'network_mbps', 'disk_iops']
+# X is a smaller spreadsheet containing ONLY those 4 columns (AI algorithms need numbers only)
 X = df[features]
 
-# Train Isolation Forest
+# Train Isolation Forest (AI algorithm)
 model = IsolationForest(
     n_estimators=100,       # Number of trees in the forest
-    contamination=0.05,     # Expected 5% of data points are anomalies
-    random_state=42,        # Reproducibility
-    n_jobs=-1               # Use all CPU cores
+    contamination=0.05,     # Tell the AI to expect 5% of data points to be anomalies
+    random_state=42,        # Set a random seed so results are identical every time
+    n_jobs=-1               # Use all CPU cores for faster processing
 )
 
+# .fit(X) tells the AI to study the data and learn what "normal" looks like
 model.fit(X)
 
-# Predict: 1 = normal, -1 = anomaly
+# .predict(X) asks the AI to grade the data: 1 = normal, -1 = anomaly
 df['anomaly'] = model.predict(X)
+# .decision_function(X) gives us a raw score (negative numbers indicate anomalies)
 df['anomaly_score'] = model.decision_function(X)
 
-# Count results
+# Count how many rows were flagged as -1 (anomaly) and 1 (normal)
 n_anomalies = (df['anomaly'] == -1).sum()
 n_normal = (df['anomaly'] == 1).sum()
 print(f"\n✅ Normal points: {n_normal}")

@@ -53,20 +53,23 @@ Where:
 import pandas as pd
 import numpy as np
 
-# Load data
+# Load data into our spreadsheet
 df = pd.read_csv('server_telemetry.csv')
 features = ['cpu_percent', 'memory_percent', 'network_mbps', 'disk_iops']
 
 # Calculate Z-scores for each feature
-z_threshold = 3  # Flag anything beyond 3 standard deviations
+z_threshold = 3  # Flag anything beyond 3 standard deviations (very rare events)
 
 for col in features:
+    # .mean() calculates the average, .std() calculates the standard deviation
     mean = df[col].mean()
     std = df[col].std()
+    # The Z-score formula: (Value - Mean) / Standard Deviation
     df[f'{col}_zscore'] = (df[col] - mean) / std
 
-# Flag a row as anomalous if ANY feature has |Z-score| > threshold
+# Flag a row as anomalous (-1) if ANY feature has an absolute Z-score > 3
 zscore_cols = [f'{col}_zscore' for col in features]
+# .apply() runs a custom check on every single row
 df['zscore_anomaly'] = df[zscore_cols].apply(
     lambda row: -1 if any(abs(row) > z_threshold) else 1, axis=1
 )
@@ -119,7 +122,9 @@ Which metrics contributed most to the anomaly flags?
 ```python
 for col in features:
     z_col = f'{col}_zscore'
+    # df[z_col].abs() gets the absolute value (ignoring negative signs)
     flagged = df[df[z_col].abs() > z_threshold]
+    # df[z_col].abs().max() finds the single highest Z-score in the column
     print(f"  {col}: {len(flagged)} data points flagged (max |Z|: {df[z_col].abs().max():.2f})")
 ```
 
